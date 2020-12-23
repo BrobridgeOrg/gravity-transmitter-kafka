@@ -12,7 +12,7 @@ import (
 func init() {
 
 	// From the environment
-	viper.SetEnvPrefix("GRAVITY_TRANSMITTER_MONGODB")
+	viper.SetEnvPrefix("GRAVITY_TRANSMITTER_KAFKA")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
