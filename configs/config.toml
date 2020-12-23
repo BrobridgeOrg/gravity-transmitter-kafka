@@ -1,0 +1,7 @@
+[service]
+port = 44143
+
+[kafka]
+hosts = "kafka:9092"
+topic_perfix = "gravity-"
+
