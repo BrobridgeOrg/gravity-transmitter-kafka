@@ -3,6 +3,7 @@ package writer
 import (
 	"encoding/binary"
 	"encoding/json"
+	"math"
 
 	transmitter "github.com/BrobridgeOrg/gravity-api/service/transmitter"
 	"github.com/Shopify/sarama"
@@ -141,7 +142,7 @@ func (writer *Writer) GetValue(value *transmitter.Value) interface{} {
 
 	switch value.Type {
 	case transmitter.DataType_FLOAT64:
-		return float64(binary.LittleEndian.Uint64(value.Value))
+		return math.Float64frombits(binary.LittleEndian.Uint64(value.Value))
 	case transmitter.DataType_INT64:
 		return int64(binary.LittleEndian.Uint64(value.Value))
 	case transmitter.DataType_UINT64:
