@@ -1,5 +1,14 @@
-[service]
-port = 44143
+[gravity]
+host = "0.0.0.0:4222"
+
+[subscriber]
+subscriber_id = "kafka_transmitter"
+subscriber_name = "Kafka Transmitter"
+state_store = "./statestore"
+worker_count = 16
+
+[rules]
+subscription = "./settings/subscriptions.json"
 
 [kafka]
 hosts = "kafka:9092"

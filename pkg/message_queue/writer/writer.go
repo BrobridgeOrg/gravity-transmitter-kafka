@@ -1,11 +1,9 @@
 package writer
 
 import (
-	"encoding/binary"
 	"encoding/json"
-	"math"
 
-	transmitter "github.com/BrobridgeOrg/gravity-api/service/transmitter"
+	gravity_sdk_types_record "github.com/BrobridgeOrg/gravity-sdk/types/record"
 	"github.com/Shopify/sarama"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -51,16 +49,16 @@ type Writer struct {
 }
 
 func NewWriter() *Writer {
-	hosts := []string{viper.GetString("kafka.hosts")}
+	host := []string{viper.GetString("kafka.host")}
 	topic_perfix := viper.GetString("kafka.topic_perfix")
 
 	log.WithFields(log.Fields{
-		"kafka_server": hosts,
+		"kafka_server": host,
 		"topic_perfix": topic_perfix,
 	}).Info("Kafka connect infomation")
 
 	return &Writer{
-		connector: NewConnector(hosts, topic_perfix),
+		connector: NewConnector(host, topic_perfix),
 		commands:  make(chan *DBCommand, 2048),
 	}
 }
@@ -94,7 +92,7 @@ func (writer *Writer) run() {
 	}
 }
 
-func (writer *Writer) ProcessData(record *transmitter.Record) error {
+func (writer *Writer) ProcessData(record *gravity_sdk_types_record.Record) error {
 
 	topic := writer.connector.topic + record.Table
 
@@ -112,11 +110,11 @@ func (writer *Writer) ProcessData(record *transmitter.Record) error {
 		n.Field = f.Name
 		n.Type = DataType_name[int32(f.Value.Type)]
 		fields = append(fields, n)
-		playload[f.Name] = writer.GetValue(f.Value)
+		playload[f.Name] = gravity_sdk_types_record.GetValue(f.Value)
 	}
 
 	schema := Schema{
-		Method: transmitter.Method_name[int32(record.Method)],
+		Method: gravity_sdk_types_record.Method_name[int32(record.Method)],
 		Event:  record.EventName,
 		Table:  record.Table,
 		Type:   "struct",
@@ -138,6 +136,7 @@ func (writer *Writer) ProcessData(record *transmitter.Record) error {
 	return nil
 }
 
+/*
 func (writer *Writer) GetValue(value *transmitter.Value) interface{} {
 
 	switch value.Type {
@@ -169,6 +168,7 @@ func (writer *Writer) GetValue(value *transmitter.Value) interface{} {
 	// binary
 	return value.Value
 }
+*/
 
 func (writer *Writer) Publish(message string, topic string) {
 	msg := &sarama.ProducerMessage{
