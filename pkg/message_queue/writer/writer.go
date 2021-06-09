@@ -2,8 +2,10 @@ package writer
 
 import (
 	"encoding/json"
+	"time"
 
 	gravity_sdk_types_record "github.com/BrobridgeOrg/gravity-sdk/types/record"
+	database "github.com/BrobridgeOrg/gravity-transmitter-kafka/pkg/message_queue"
 	"github.com/Shopify/sarama"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -18,11 +20,6 @@ var DataType_name = map[int32]string{
 	5: "float64",
 	6: "array",
 	7: "map",
-}
-
-type DBCommand struct {
-	QueryStr string
-	Args     map[string]interface{}
 }
 
 type Field struct {
@@ -44,8 +41,9 @@ type Schema struct {
 }
 
 type Writer struct {
-	connector *Connector
-	commands  chan *DBCommand
+	connector         *Connector
+	commands          chan *DBCommand
+	completionHandler database.CompletionHandler
 }
 
 func NewWriter() *Writer {
@@ -58,8 +56,9 @@ func NewWriter() *Writer {
 	}).Info("Kafka connect infomation")
 
 	return &Writer{
-		connector: NewConnector(host, topic_perfix),
-		commands:  make(chan *DBCommand, 2048),
+		connector:         NewConnector(host, topic_perfix),
+		commands:          make(chan *DBCommand, 2048),
+		completionHandler: func(database.DBCommand) {},
 	}
 }
 
@@ -71,8 +70,6 @@ func (writer *Writer) Init() error {
 		return err
 	}
 
-	//TODO: Reconnect
-
 	go writer.run()
 
 	return nil
@@ -81,18 +78,17 @@ func (writer *Writer) Init() error {
 func (writer *Writer) run() {
 	for {
 		select {
-		case _ = <-writer.commands:
-			/*
-				_, err := writer.db.NamedExec(cmd.QueryStr, cmd.Args)
-				if err != nil {
-					log.Error(err)
-				}
-			*/
+		case cmd := <-writer.commands:
+			writer.completionHandler(database.DBCommand(cmd))
 		}
 	}
 }
 
-func (writer *Writer) ProcessData(record *gravity_sdk_types_record.Record) error {
+func (writer *Writer) SetCompletionHandler(fn database.CompletionHandler) {
+	writer.completionHandler = fn
+}
+
+func (writer *Writer) ProcessData(reference interface{}, record *gravity_sdk_types_record.Record) error {
 
 	topic := writer.connector.topic + record.Table
 
@@ -131,54 +127,36 @@ func (writer *Writer) ProcessData(record *gravity_sdk_types_record.Record) error
 		log.Error(err)
 	}
 
-	writer.Publish(string(jsondata), topic)
+	writer.Publish(reference, record, string(jsondata), topic)
 
 	return nil
 }
 
-/*
-func (writer *Writer) GetValue(value *transmitter.Value) interface{} {
-
-	switch value.Type {
-	case transmitter.DataType_FLOAT64:
-		return math.Float64frombits(binary.LittleEndian.Uint64(value.Value))
-	case transmitter.DataType_INT64:
-		return int64(binary.LittleEndian.Uint64(value.Value))
-	case transmitter.DataType_UINT64:
-		return uint64(binary.LittleEndian.Uint64(value.Value))
-	case transmitter.DataType_BOOLEAN:
-		return int8(value.Value[0]) & 1
-	case transmitter.DataType_STRING:
-		return string(value.Value)
-	case transmitter.DataType_MAP:
-		mapValue := make(map[string]interface{}, len(value.Map.Fields))
-		for _, field := range value.Map.Fields {
-			mapValue[field.Name] = writer.GetValue(field.Value)
-		}
-		return mapValue
-	case transmitter.DataType_ARRAY:
-		arrayValue := make([]interface{}, len(value.Array.Elements))
-		for _, ele := range value.Array.Elements {
-			v := writer.GetValue(ele)
-			arrayValue = append(arrayValue, v)
-		}
-		return arrayValue
-	}
-
-	// binary
-	return value.Value
-}
-*/
-
-func (writer *Writer) Publish(message string, topic string) {
+func (writer *Writer) Publish(reference interface{}, record *gravity_sdk_types_record.Record, message string, topic string) {
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(message),
 	}
+ProducerLoop:
+	for {
+		select {
+		case writer.connector.producer.Input() <- msg:
+			writer.commands <- &DBCommand{
+				Reference: reference,
+				Record:    record,
+			}
+			return
 
-	select {
-	case writer.connector.producer.Input() <- msg:
-	case err := <-writer.connector.producer.Errors():
-		log.Error("Produced message failure: ", err)
+		case err := <-writer.connector.producer.Errors():
+			log.Error("Produced message failure: ", err)
+			<-time.After(time.Second * 5)
+			log.WithFields(log.Fields{
+				"event_name": record.EventName,
+				"method":     record.Method.String(),
+				"table":      record.Table,
+			}).Warn("Retry to write record to database...")
+
+			break ProducerLoop
+		}
 	}
 }
