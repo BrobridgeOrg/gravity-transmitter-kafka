@@ -18,5 +18,3 @@ subscription = "./settings/subscriptions.json"
 
 [kafka]
 hosts = "kafka:9092"
-topic_perfix = "gravity-"
-

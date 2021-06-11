@@ -48,15 +48,13 @@ type Writer struct {
 
 func NewWriter() *Writer {
 	host := []string{viper.GetString("kafka.host")}
-	topic_perfix := viper.GetString("kafka.topic_perfix")
 
 	log.WithFields(log.Fields{
 		"kafka_server": host,
-		"topic_perfix": topic_perfix,
 	}).Info("Kafka connect infomation")
 
 	return &Writer{
-		connector:         NewConnector(host, topic_perfix),
+		connector:         NewConnector(host),
 		commands:          make(chan *DBCommand, 2048),
 		completionHandler: func(database.DBCommand) {},
 	}
@@ -90,7 +88,7 @@ func (writer *Writer) SetCompletionHandler(fn database.CompletionHandler) {
 
 func (writer *Writer) ProcessData(reference interface{}, record *gravity_sdk_types_record.Record) error {
 
-	topic := writer.connector.topic + record.Table
+	topic := record.Table
 
 	log.WithFields(log.Fields{
 		"method": record.Method,

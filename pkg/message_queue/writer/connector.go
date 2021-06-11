@@ -8,13 +8,11 @@ import (
 type Connector struct {
 	producer sarama.AsyncProducer
 	hosts    []string
-	topic    string
 }
 
-func NewConnector(hosts []string, topic string) *Connector {
+func NewConnector(hosts []string) *Connector {
 	return &Connector{
 		hosts: hosts,
-		topic: topic,
 	}
 }
 
