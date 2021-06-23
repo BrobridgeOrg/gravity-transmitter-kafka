@@ -3,7 +3,7 @@ module github.com/BrobridgeOrg/gravity-transmitter-kafka
 go 1.15
 
 require (
-	github.com/BrobridgeOrg/gravity-sdk v0.0.17
+	github.com/BrobridgeOrg/gravity-sdk v0.0.19
 	github.com/Shopify/sarama v1.27.2
 	github.com/jinzhu/copier v0.3.2
 	github.com/sirupsen/logrus v1.8.1
