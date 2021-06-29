@@ -20,4 +20,4 @@ omitted_count = 100000
 subscription = "./settings/subscriptions.json"
 
 [kafka]
-hosts = "kafka:9092"
+hosts = "kafka1:9092,kafka2:9092"

@@ -2,6 +2,7 @@ package writer
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	gravity_sdk_types_record "github.com/BrobridgeOrg/gravity-sdk/types/record"
@@ -47,14 +48,15 @@ type Writer struct {
 }
 
 func NewWriter() *Writer {
-	host := []string{viper.GetString("kafka.host")}
+	hostsStr := viper.GetString("kafka.hosts")
+	hosts := strings.Split(hostsStr, ",")
 
 	log.WithFields(log.Fields{
-		"kafka_server": host,
+		"kafka_server": hosts,
 	}).Info("Kafka connect infomation")
 
 	return &Writer{
-		connector:         NewConnector(host),
+		connector:         NewConnector(hosts),
 		commands:          make(chan *DBCommand, 2048),
 		completionHandler: func(database.DBCommand) {},
 	}
