@@ -7,6 +7,7 @@ subscriberID = "kafka_transmitter"
 subscriberName = "Kafka Transmitter"
 stateStore = "./statestore"
 workerCount = 4
+chunkSize = 2048
 verbose = true
 pipelineStart = 0
 pipelineEnd = -1
