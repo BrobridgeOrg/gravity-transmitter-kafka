@@ -88,7 +88,7 @@ func (writer *Writer) SetCompletionHandler(fn database.CompletionHandler) {
 	writer.completionHandler = fn
 }
 
-func (writer *Writer) ProcessData(reference interface{}, record *gravity_sdk_types_record.Record) error {
+func (writer *Writer) ProcessData(reference interface{}, record *gravity_sdk_types_record.Record, tables []string) error {
 
 	topic := record.Table
 
@@ -127,12 +127,12 @@ func (writer *Writer) ProcessData(reference interface{}, record *gravity_sdk_typ
 		log.Error(err)
 	}
 
-	writer.Publish(reference, record, string(jsondata), topic)
+	writer.Publish(reference, record, string(jsondata), topic, tables)
 
 	return nil
 }
 
-func (writer *Writer) Publish(reference interface{}, record *gravity_sdk_types_record.Record, message string, topic string) {
+func (writer *Writer) Publish(reference interface{}, record *gravity_sdk_types_record.Record, message string, topic string, tables []string) {
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(message),
@@ -144,6 +144,7 @@ ProducerLoop:
 			writer.commands <- &DBCommand{
 				Reference: reference,
 				Record:    record,
+				Tables:    tables,
 			}
 			return
 
